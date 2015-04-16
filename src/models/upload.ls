@@ -5,6 +5,8 @@ module.exports = mongoose.model 'Upload', {
 	schoolId: String,
 	student: String,
 	course: String,
+	deadline: String,
 	score: String,
-	homework: String
+	homework: String,
+	uploadDate: String
 }

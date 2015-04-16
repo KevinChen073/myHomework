@@ -3,6 +3,7 @@ var router = express.Router();
 var Course = require('../models/course');
 var User = require('../models/user');
 var Upload = require('../models/upload');
+var courseHandle = require('../course/handler');
 
 var isAuthenticated = function (req, res, next) {
 	// if user is authenticated in the session, call the next() to call the next request handler
@@ -41,6 +42,7 @@ module.exports = function(passport){
 		});
 		res.redirect('/home');
 	});
+
 
 	router.get('/upload', function(req, res) {
     	// Display the Login page with any flash message, if any
@@ -110,13 +112,19 @@ module.exports = function(passport){
 	});
 
 	router.post('/uploadHw',function(req,res){
+		var curDate = new Date();
 		var newUpload = new Upload();
-		newUpload.schoolId = req.body.schoolId;
-		newUpload.student = req.body.student;
-		newUpload.course = req.body.course;
-		newUpload.homework = req.body.homework;
-		newUpload.save();
-		res.redirect('/home');
+		Course.findOne({CourseName:req.body.course}).exec(function(err,doc){
+			newUpload.deadline = doc.deadline;
+			newUpload.uploadDate = curDate;
+			newUpload.schoolId = req.body.schoolId;
+			newUpload.student = req.body.student;
+			newUpload.course = req.body.course;
+			newUpload.homework = req.body.homework;
+			newUpload.save();
+			res.redirect('/home');
+		});
+
 	});
 
 	/* GET Registration Page */
@@ -133,9 +141,29 @@ module.exports = function(passport){
 
 	/* GET Home Page */
 	router.get('/home', isAuthenticated, function(req, res){
+		var curDate = Date.now();
+		var cDate = new Date();
+
 		Course.find().exec(function(err,docs){
 			Upload.find().exec(function(err,docs2){
-				res.render('home', { user: req.user,courses:docs,uploads:docs2});
+				//对每个docs进行检查是否已经过deadline，如果是，则timeout = true
+				for (var k in docs2){
+					//console.log(Date.parse(docs2[k].deadline));
+					var sub = curDate-Date.parse(docs2[k].deadline);
+					//console.log(sub);
+					if (sub){//true则证明deadline没到
+						docs2[k].timeout = false;
+					}else{
+						docs2[k].timeout = true;
+					}
+					//console.log(docs2[k].timeout);
+				}
+				res.render('home', {
+					user: req.user,
+					courses:docs,
+					uploads:docs2,
+					date:cDate
+				});
 			});
 		});
 	});
